@@ -22,7 +22,9 @@ import {
   Mail,
   ShieldCheck,
   X,
-  Building
+  Building,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
@@ -32,8 +34,12 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [cleaning, setCleaning] = useState<boolean>(false);
+  const [deletingBatch, setDeletingBatch] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+
+  // Multi-select state for bulk deletion
+  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
 
   const [editingJob, setEditingJob] = useState<Partial<Job> | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -56,7 +62,7 @@ export default function AdminDashboardPage() {
     try {
       const [statsRes, jobsRes] = await Promise.all([
         fetch('/api/admin/stats'),
-        fetch('/api/jobs?limit=100&visa_only=false'),
+        fetch('/api/jobs?limit=200&visa_only=false'),
       ]);
 
       const statsData = await statsRes.json();
@@ -93,7 +99,7 @@ export default function AdminDashboardPage() {
       if (!res.ok) {
         alert('Sync Error (401 Unauthorized): ' + (data.error || 'Please provide your CRON_SECRET'));
       } else {
-        alert(data.message || `AI Scraper Sync Completed! Added ${data.jobsAdded || 0} jobs.`);
+        alert(data.message || `AI Scraper Sync Completed! Added ${data.newJobs || 0} new jobs.`);
         fetchAdminData();
       }
     } catch (e) {
@@ -133,9 +139,73 @@ export default function AdminDashboardPage() {
     try {
       await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
       setJobs(prev => prev.filter(j => j.id !== id));
+      setSelectedJobIds(prev => prev.filter(selectedId => selectedId !== id));
       fetchAdminData();
     } catch (e) {
       alert('Failed to delete job: ' + (e as Error).message);
+    }
+  };
+
+  // Multi-select actions
+  const handleToggleSelectJob = (id: string) => {
+    setSelectedJobIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const filteredJobs = jobs.filter(j => {
+    const matchesSearch =
+      j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      j.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      j.location.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === 'ALL'
+        ? true
+        : statusFilter === 'ACTIVE'
+        ? j.is_active
+        : !j.is_active;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const isAllSelected =
+    filteredJobs.length > 0 && filteredJobs.every(j => selectedJobIds.includes(j.id));
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      const currentFilteredIds = new Set(filteredJobs.map(j => j.id));
+      setSelectedJobIds(prev => prev.filter(id => !currentFilteredIds.has(id)));
+    } else {
+      const allIds = new Set([...selectedJobIds, ...filteredJobs.map(j => j.id)]);
+      setSelectedJobIds(Array.from(allIds));
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedJobIds.length === 0) return;
+    if (!confirm(`Are you sure you want to permanently delete ${selectedJobIds.length} selected job postings?`)) return;
+
+    setDeletingBatch(true);
+    try {
+      const res = await fetch('/api/jobs', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedJobIds }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Successfully deleted ${data.deletedCount || selectedJobIds.length} job postings!`);
+        setSelectedJobIds([]);
+        fetchAdminData();
+      } else {
+        alert('Batch delete failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (e) {
+      alert('Batch delete failed: ' + (e as Error).message);
+    } finally {
+      setDeletingBatch(false);
     }
   };
 
@@ -160,28 +230,12 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const filteredJobs = jobs.filter(j => {
-    const matchesSearch =
-      j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      j.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      j.location.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus =
-      statusFilter === 'ALL'
-        ? true
-        : statusFilter === 'ACTIVE'
-        ? j.is_active
-        : !j.is_active;
-
-    return matchesSearch && matchesStatus;
-  });
-
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 flex-1 mb-16 w-full">
-        {/* Header Title & Logout */}
+        {/* Header Title & Actions */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
             <div className="flex items-center gap-2">
@@ -193,11 +247,22 @@ export default function AdminDashboardPage() {
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-1 font-medium">
-              Manage postings, track user click metrics, trigger Gemini AI scrapes & cleanup expired listings.
+              Manage postings, track user click metrics, trigger Gemini AI scrapes & batch delete jobs.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {selectedJobIds.length > 0 && (
+              <button
+                onClick={handleBatchDelete}
+                disabled={deletingBatch}
+                className="bg-rose-600 hover:bg-rose-700 text-white text-xs py-2.5 px-4 rounded-xl flex items-center gap-2 font-bold shadow-md transition-all animate-bounce"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete Selected ({selectedJobIds.length})</span>
+              </button>
+            )}
+
             <button
               onClick={handleTriggerSync}
               disabled={syncing}
@@ -309,8 +374,14 @@ export default function AdminDashboardPage() {
               </button>
             </div>
 
-            {/* Filter controls */}
+            {/* Filter & Batch selection summary */}
             <div className="flex items-center gap-3">
+              {selectedJobIds.length > 0 && (
+                <span className="text-xs font-bold text-rose-700 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200">
+                  {selectedJobIds.length} Selected
+                </span>
+              )}
+
               <div className="relative">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -339,6 +410,15 @@ export default function AdminDashboardPage() {
             <table className="w-full text-left text-xs text-slate-700 border-collapse">
               <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-black tracking-wider border-b border-slate-200">
                 <tr>
+                  <th className="py-3.5 px-4 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={handleToggleSelectAll}
+                      className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+                      title="Select / Deselect All"
+                    />
+                  </th>
                   <th className="py-3.5 px-4">Job Title & Company</th>
                   <th className="py-3.5 px-4">Location</th>
                   <th className="py-3.5 px-4">Source</th>
@@ -351,81 +431,98 @@ export default function AdminDashboardPage() {
               <tbody className="divide-y divide-slate-200 font-medium">
                 {filteredJobs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-slate-400 font-semibold">
+                    <td colSpan={8} className="py-10 text-center text-slate-400 font-semibold">
                       No job postings match your filters.
                     </td>
                   </tr>
                 ) : (
-                  filteredJobs.map(job => (
-                    <tr key={job.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        <div className="text-sm text-blue-700 leading-snug">{job.title}</div>
-                        <div className="text-slate-500 text-xs font-normal">{job.company_name}</div>
-                      </td>
+                  filteredJobs.map(job => {
+                    const isSelected = selectedJobIds.includes(job.id);
+                    return (
+                      <tr
+                        key={job.id}
+                        className={`transition-colors ${
+                          isSelected ? 'bg-blue-50/70 hover:bg-blue-100/70' : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <td className="py-3.5 px-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectJob(job.id)}
+                            className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+                          />
+                        </td>
 
-                      <td className="py-3.5 px-4">
-                        <span className="bg-slate-100 px-2.5 py-1 rounded-md text-slate-700 font-semibold border border-slate-200">
-                          {job.location}
-                        </span>
-                      </td>
+                        <td className="py-3.5 px-4 font-bold text-slate-900">
+                          <div className="text-sm text-blue-700 leading-snug">{job.title}</div>
+                          <div className="text-slate-500 text-xs font-normal">{job.company_name}</div>
+                        </td>
 
-                      <td className="py-3.5 px-4">
-                        <span className="tag-chip tag-eures text-[10px]">
-                          {job.source}
-                        </span>
-                      </td>
-
-                      <td className="py-3.5 px-4">
-                        {job.company_email || job.recruiter_email ? (
-                          <span className="text-purple-700 flex items-center gap-1 font-mono text-xs font-bold">
-                            <Mail className="w-3.5 h-3.5 text-purple-600" />
-                            {job.company_email || job.recruiter_email}
+                        <td className="py-3.5 px-4">
+                          <span className="bg-slate-100 px-2.5 py-1 rounded-md text-slate-700 font-semibold border border-slate-200">
+                            {job.location}
                           </span>
-                        ) : (
-                          <span className="text-slate-400 text-xs">Direct Web</span>
-                        )}
-                      </td>
+                        </td>
 
-                      <td className="py-3.5 px-4">
-                        <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md font-extrabold border border-blue-200">
-                          🔥 {job.click_count || 0}
-                        </span>
-                      </td>
-
-                      <td className="py-3.5 px-4">
-                        {job.is_active ? (
-                          <span className="text-emerald-700 font-extrabold flex items-center gap-1">
-                            ● Active
+                        <td className="py-3.5 px-4">
+                          <span className="tag-chip tag-eures text-[10px]">
+                            {job.source}
                           </span>
-                        ) : (
-                          <span className="text-amber-700 font-extrabold flex items-center gap-1">
-                            ● Expired
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {job.company_email || job.recruiter_email ? (
+                            <span className="text-purple-700 flex items-center gap-1 font-mono text-xs font-bold">
+                              <Mail className="w-3.5 h-3.5 text-purple-600" />
+                              {job.company_email || job.recruiter_email}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-xs">Direct Web</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md font-extrabold border border-blue-200">
+                            🔥 {job.click_count || 0}
                           </span>
-                        )}
-                      </td>
+                        </td>
 
-                      <td className="py-3.5 px-4 text-right space-x-2">
-                        <button
-                          onClick={() => {
-                            setEditingJob(job);
-                            setIsModalOpen(true);
-                          }}
-                          className="btn-hague-outline py-1 px-2.5 text-xs"
-                          title="Edit"
-                        >
-                          <Edit className="w-3.5 h-3.5 text-blue-600" />
-                        </button>
+                        <td className="py-3.5 px-4">
+                          {job.is_active ? (
+                            <span className="text-emerald-700 font-extrabold flex items-center gap-1">
+                              ● Active
+                            </span>
+                          ) : (
+                            <span className="text-amber-700 font-extrabold flex items-center gap-1">
+                              ● Expired
+                            </span>
+                          )}
+                        </td>
 
-                        <button
-                          onClick={() => handleDeleteJob(job.id)}
-                          className="btn-hague-outline py-1 px-2.5 text-xs text-rose-700 border-rose-200 bg-rose-50"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                        <td className="py-3.5 px-4 text-right space-x-2">
+                          <button
+                            onClick={() => {
+                              setEditingJob(job);
+                              setIsModalOpen(true);
+                            }}
+                            className="btn-hague-outline py-1 px-2.5 text-xs"
+                            title="Edit"
+                          >
+                            <Edit className="w-3.5 h-3.5 text-blue-600" />
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteJob(job.id)}
+                            className="btn-hague-outline py-1 px-2.5 text-xs text-rose-700 border-rose-200 bg-rose-50"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
