@@ -38,13 +38,7 @@ export default function JobDetailModal({ job, onClose, onTrackClick }: JobDetail
     setTimeout(() => setCopiedEmail(null), 2500);
   };
 
-  const handleExternalApply = () => {
-    onTrackClick(job.id);
-    const targetUrl = formatExternalUrl(job.original_url, job.company_name, job.title);
-    if (targetUrl !== '#') {
-      window.open(targetUrl, '_blank', 'noopener,noreferrer');
-    }
-  };
+  const applyUrl = formatExternalUrl(job.original_url, job.company_name, job.title);
 
   const getCountryFlag = (code: string) => {
     const flags: Record<string, string> = {
@@ -233,7 +227,7 @@ export default function JobDetailModal({ job, onClose, onTrackClick }: JobDetail
         <div className="mb-6">
           <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-purple-600" />
-            Gemini AI Job Summary
+            AI Job Summary
           </h4>
           <p className="text-sm text-slate-700 bg-slate-50 p-4 rounded-2xl border border-slate-200 leading-relaxed font-medium">
             {job.summary}
@@ -259,13 +253,16 @@ export default function JobDetailModal({ job, onClose, onTrackClick }: JobDetail
             Close
           </button>
 
-          <button
-            onClick={handleExternalApply}
-            className="btn-apply-exact text-xs py-3 px-6 rounded-xl flex items-center gap-2"
+          <a
+            href={applyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => onTrackClick(job.id)}
+            className="btn-apply-exact text-xs py-3 px-6 rounded-xl flex items-center gap-2 cursor-pointer text-decoration-none"
           >
             <span>Apply Now on {job.source}</span>
             <ExternalLink className="w-4 h-4" />
-          </button>
+          </a>
         </div>
       </div>
     </div>
