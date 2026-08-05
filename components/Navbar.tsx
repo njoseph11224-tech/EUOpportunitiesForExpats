@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Globe, Briefcase, LayoutDashboard, ShieldCheck } from 'lucide-react';
+import { Globe, Briefcase, LayoutDashboard } from 'lucide-react';
 
 export default function Navbar() {
   return (
@@ -22,7 +22,7 @@ export default function Navbar() {
               </span>
             </div>
             <span className="text-xs text-slate-500 font-medium">
-              EURES • LinkedIn • Google Jobs • Gemini AI
+              European Expat Visa Sponsorship Jobs
             </span>
           </div>
         </Link>
