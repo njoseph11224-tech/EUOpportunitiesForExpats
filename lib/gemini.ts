@@ -14,10 +14,14 @@ export async function enrichJobWithAI(
   existingData: Partial<Job> = {}
 ): Promise<AIExtractionResult> {
   if (genAI) {
-    try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // Model candidates array to handle API deprecation / model naming changes across v1beta
+    const candidateModels = ['gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-2.5-flash'];
 
-      const prompt = `
+    for (const modelName of candidateModels) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+
+        const prompt = `
 You are an expert AI recruiter for European expat visa sponsorship jobs.
 Analyze the following job posting text and extract structured JSON information.
 
@@ -60,30 +64,31 @@ Return ONLY valid JSON matching this schema without markdown codeblocks or extra
 }
 `;
 
-      const result = await model.generateContent(prompt);
-      const text = result.response.text().trim();
-      const cleanedJson = text.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
+        const result = await model.generateContent(prompt);
+        const text = result.response.text().trim();
+        const cleanedJson = text.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
 
-      const parsed = JSON.parse(cleanedJson);
-      return {
-        title: parsed.title || existingData.title || 'Software Opportunity',
-        company_name: parsed.company_name || existingData.company_name || 'Tech Company',
-        company_website: parsed.company_website || existingData.company_website || null,
-        company_email: parsed.company_email || existingData.company_email || null,
-        recruiter_name: parsed.recruiter_name || existingData.recruiter_name || null,
-        recruiter_email: parsed.recruiter_email || existingData.recruiter_email || null,
-        recruiter_linkedin: parsed.recruiter_linkedin || existingData.recruiter_linkedin || null,
-        location: parsed.location || existingData.location || 'Europe',
-        country_code: parsed.country_code || existingData.country_code || 'EU',
-        visa_sponsorship: typeof parsed.visa_sponsorship === 'boolean' ? parsed.visa_sponsorship : true,
-        visa_details: parsed.visa_details || 'Visa Sponsorship Provided',
-        summary: parsed.summary || 'Exciting European position offering visa sponsorship and relocation support.',
-        category: (parsed.category as Job['category']) || existingData.category || 'Software Engineering',
-        job_type: (parsed.job_type as Job['job_type']) || existingData.job_type || 'Full-time',
-        salary_range: parsed.salary_range || existingData.salary_range || null,
-      };
-    } catch (error) {
-      console.warn('Gemini API call failed, using intelligent Regex fallback:', error);
+        const parsed = JSON.parse(cleanedJson);
+        return {
+          title: parsed.title || existingData.title || 'Software Opportunity',
+          company_name: parsed.company_name || existingData.company_name || 'Tech Company',
+          company_website: parsed.company_website || existingData.company_website || null,
+          company_email: parsed.company_email || existingData.company_email || null,
+          recruiter_name: parsed.recruiter_name || existingData.recruiter_name || null,
+          recruiter_email: parsed.recruiter_email || existingData.recruiter_email || null,
+          recruiter_linkedin: parsed.recruiter_linkedin || existingData.recruiter_linkedin || null,
+          location: parsed.location || existingData.location || 'Europe',
+          country_code: parsed.country_code || existingData.country_code || 'EU',
+          visa_sponsorship: typeof parsed.visa_sponsorship === 'boolean' ? parsed.visa_sponsorship : true,
+          visa_details: parsed.visa_details || 'Visa Sponsorship Provided',
+          summary: parsed.summary || 'Exciting European position offering visa sponsorship and relocation support.',
+          category: (parsed.category as Job['category']) || existingData.category || 'Software Engineering',
+          job_type: (parsed.job_type as Job['job_type']) || existingData.job_type || 'Full-time',
+          salary_range: parsed.salary_range || existingData.salary_range || null,
+        };
+      } catch (error) {
+        console.warn(`Gemini model ${modelName} call failed, trying next candidate...`);
+      }
     }
   }
 
