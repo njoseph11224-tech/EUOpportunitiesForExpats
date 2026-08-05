@@ -86,29 +86,61 @@ export interface AIExtractionResult {
 }
 
 /**
- * Format external URLs to prevent relative 404 navigation errors
+ * Format external URLs intelligently to direct users to working company career pages
  */
 export function formatExternalUrl(url?: string | null, companyName?: string, title?: string): string {
   if (!url || url === '#' || url.trim() === '') {
     if (companyName || title) {
-      return `https://www.google.com/search?q=${encodeURIComponent(`${companyName || ''} ${title || ''} jobs visa sponsorship`)}`;
+      return `https://www.google.com/search?q=${encodeURIComponent(`${companyName || ''} ${title || ''} careers visa sponsorship`)}`;
     }
     return '#';
   }
 
   const trimmed = url.trim();
+  const compLower = (companyName || '').toLowerCase();
 
-  // If URL starts with valid protocol
+  // If URL contains broken mock paths or generic government slugs (/jobs/...)
+  if (
+    trimmed.includes('/jobs/') &&
+    (trimmed.includes('francetravail.fr') ||
+      trimmed.includes('workindenmark.dk') ||
+      trimmed.includes('arbetsformedlingen.se') ||
+      trimmed.includes('jobsireland.ie') ||
+      trimmed.includes('make-it-in-germany.com') ||
+      trimmed.includes('werk.nl') ||
+      trimmed.includes('arbeitnow.com') ||
+      trimmed.includes('relocate.me'))
+  ) {
+    if (compLower.includes('qonto')) return 'https://qonto.com/en/careers';
+    if (compLower.includes('sap')) return 'https://www.sap.com/careers.html';
+    if (compLower.includes('asml')) return 'https://www.asml.com/careers';
+    if (compLower.includes('booking')) return 'https://jobs.booking.com';
+    if (compLower.includes('siemens')) return 'https://jobs.siemens.com';
+    if (compLower.includes('bosch')) return 'https://careers.bosch.com';
+    if (compLower.includes('bmw')) return 'https://www.bmwgroup.jobs';
+    if (compLower.includes('spotify')) return 'https://www.lifeatspotify.com/jobs';
+    if (compLower.includes('novo nordisk')) return 'https://www.novonordisk.com/careers.html';
+    if (compLower.includes('ericsson')) return 'https://www.ericsson.com/careers';
+    if (compLower.includes('nokia')) return 'https://www.nokia.com/about-us/careers';
+    if (compLower.includes('google')) return 'https://careers.google.com';
+    if (compLower.includes('stripe')) return 'https://stripe.com/jobs';
+    if (compLower.includes('adyen')) return 'https://careers.adyen.com';
+    if (compLower.includes('delivery hero')) return 'https://careers.deliveryhero.com';
+    if (compLower.includes('n26')) return 'https://n26.com/en-de/careers';
+    if (compLower.includes('vinted')) return 'https://www.vinted.com/jobs';
+
+    return `https://www.google.com/search?q=${encodeURIComponent(`${companyName || ''} ${title || ''} careers visa sponsorship`)}`;
+  }
+
+  // Standard valid external URLs
   if (/^https?:\/\//i.test(trimmed)) {
     return trimmed;
   }
 
-  // If it's a domain/path format like "jobs.google.com/xyz" or "linkedin.com/jobs"
   if (trimmed.includes('.') && !trimmed.startsWith('/')) {
     return `https://${trimmed}`;
   }
 
-  // If it's a relative slug like "/novo-nordisk-copenhagen" or "novo-nordisk-copenhagen"
   const cleanSlug = trimmed.replace(/^\/+/, '');
   return `https://www.google.com/search?q=${encodeURIComponent(`${companyName || ''} ${title || ''} ${cleanSlug}`)}`;
 }
