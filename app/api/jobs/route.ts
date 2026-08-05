@@ -39,8 +39,8 @@ export async function POST(request: NextRequest) {
       enrichedData = { ...body, ...aiResult };
     }
 
-    const saved = await saveJob(enrichedData);
-    return NextResponse.json(saved, { status: 201 });
+    const { job, isDuplicate } = await saveJob(enrichedData);
+    return NextResponse.json({ ...job, isDuplicate }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }

@@ -5,14 +5,15 @@ import { enrichJobWithAI } from '../gemini';
 import { saveJob, logCronExecution } from '../db';
 import { Job } from '../types';
 
-export async function runFullScrapeAndEnrichment(): Promise<{ processed: number; success: boolean; message: string }> {
+export async function runFullScrapeAndEnrichment(): Promise<{ processed: number; newJobs: number; duplicatesUpdated: number; success: boolean; message: string }> {
   try {
     const euresJobs = await scrapeEuresJobs();
     const linkedinJobs = await scrapeLinkedInJobs();
     const googleJobs = await scrapeGoogleJobs();
 
     const rawList = [...euresJobs, ...linkedinJobs, ...googleJobs];
-    let savedCount = 0;
+    let newJobsCount = 0;
+    let duplicatesUpdatedCount = 0;
 
     for (const raw of rawList) {
       // Enrich each scraped job with Gemini AI
@@ -43,22 +44,32 @@ export async function runFullScrapeAndEnrichment(): Promise<{ processed: number;
         posted_at: new Date().toISOString(),
         expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
         is_active: true,
-        click_count: Math.floor(Math.random() * 15) + 5,
       };
 
-      await saveJob(newJob);
-      savedCount++;
+      // saveJob handles duplicate checking via original_url and title+company_name
+      const { isDuplicate } = await saveJob(newJob);
+      if (isDuplicate) {
+        duplicatesUpdatedCount++;
+      } else {
+        newJobsCount++;
+      }
     }
 
-    const message = `Successfully scraped & enriched ${savedCount} EU visa sponsorship jobs via AI.`;
+    const message = `AI Sync completed: ${newJobsCount} new jobs posted, ${duplicatesUpdatedCount} duplicate jobs updated & refreshed.`;
     await logCronExecution({
       run_type: 'SCRAPE',
-      jobs_processed: savedCount,
+      jobs_processed: newJobsCount,
       status: 'SUCCESS',
       message,
     });
 
-    return { processed: savedCount, success: true, message };
+    return {
+      processed: rawList.length,
+      newJobs: newJobsCount,
+      duplicatesUpdated: duplicatesUpdatedCount,
+      success: true,
+      message,
+    };
   } catch (error) {
     const errMessage = (error as Error).message;
     await logCronExecution({
@@ -67,6 +78,6 @@ export async function runFullScrapeAndEnrichment(): Promise<{ processed: number;
       status: 'FAILED',
       message: errMessage,
     });
-    return { processed: 0, success: false, message: errMessage };
+    return { processed: 0, newJobs: 0, duplicatesUpdated: 0, success: false, message: errMessage };
   }
 }

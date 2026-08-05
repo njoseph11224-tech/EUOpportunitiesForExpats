@@ -408,51 +408,95 @@ export async function incrementJobClick(jobId: string, referrer?: string, ipHash
   return 0;
 }
 
-export async function saveJob(jobData: Partial<Job>): Promise<Job> {
+export async function saveJob(jobData: Partial<Job>): Promise<{ job: Job; isDuplicate: boolean }> {
+  // 1. Deduplication check: Search by original_url or (title + company_name)
+  let existingJob: Job | null = null;
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      if (jobData.original_url && jobData.original_url !== '#') {
+        const { data } = await supabase
+          .from('jobs')
+          .select('*')
+          .eq('original_url', jobData.original_url)
+          .maybeSingle();
+        if (data) existingJob = data as Job;
+      }
+
+      if (!existingJob && jobData.title && jobData.company_name) {
+        const { data } = await supabase
+          .from('jobs')
+          .select('*')
+          .ilike('title', jobData.title.trim())
+          .ilike('company_name', jobData.company_name.trim())
+          .maybeSingle();
+        if (data) existingJob = data as Job;
+      }
+    } catch (e) {
+      console.warn('Supabase duplicate lookup warning:', e);
+    }
+  }
+
+  if (!existingJob) {
+    existingJob =
+      memoryJobs.find(
+        j =>
+          (jobData.original_url && jobData.original_url !== '#' && j.original_url === jobData.original_url) ||
+          (jobData.title &&
+            jobData.company_name &&
+            j.title.toLowerCase().trim() === jobData.title.toLowerCase().trim() &&
+            j.company_name.toLowerCase().trim() === jobData.company_name.toLowerCase().trim())
+      ) || null;
+  }
+
+  const isDuplicate = Boolean(existingJob);
+  const targetId = existingJob ? existingJob.id : jobData.id || generateUUID();
+
   const newJob: Job = {
-    id: jobData.id || generateUUID(),
-    title: jobData.title || 'Untitled Position',
-    company_name: jobData.company_name || 'Unknown Company',
-    company_website: jobData.company_website || null,
-    company_email: jobData.company_email || null,
-    recruiter_name: jobData.recruiter_name || null,
-    recruiter_email: jobData.recruiter_email || null,
-    recruiter_linkedin: jobData.recruiter_linkedin || null,
-    location: jobData.location || 'Europe',
-    country_code: jobData.country_code || 'EU',
-    source: jobData.source || 'Manual',
-    original_url: jobData.original_url || '#',
-    description: jobData.description || '',
-    summary: jobData.summary || 'Visa sponsorship opportunity.',
-    visa_sponsorship: jobData.visa_sponsorship ?? true,
-    visa_details: jobData.visa_details || 'Visa Sponsorship Provided',
-    category: jobData.category || 'Software Engineering',
-    job_type: jobData.job_type || 'Full-time',
-    salary_range: jobData.salary_range || null,
-    posted_at: jobData.posted_at || new Date().toISOString(),
-    expires_at: jobData.expires_at || new Date(Date.now() + 30 * 86400000).toISOString(),
-    is_active: jobData.is_active ?? true,
-    click_count: jobData.click_count || 0,
-    created_at: jobData.created_at || new Date().toISOString(),
+    id: targetId,
+    title: jobData.title || existingJob?.title || 'Untitled Position',
+    company_name: jobData.company_name || existingJob?.company_name || 'Unknown Company',
+    company_website: jobData.company_website || existingJob?.company_website || null,
+    company_email: jobData.company_email || existingJob?.company_email || null,
+    recruiter_name: jobData.recruiter_name || existingJob?.recruiter_name || null,
+    recruiter_email: jobData.recruiter_email || existingJob?.recruiter_email || null,
+    recruiter_linkedin: jobData.recruiter_linkedin || existingJob?.recruiter_linkedin || null,
+    location: jobData.location || existingJob?.location || 'Europe',
+    country_code: jobData.country_code || existingJob?.country_code || 'EU',
+    source: jobData.source || existingJob?.source || 'Manual',
+    original_url: jobData.original_url || existingJob?.original_url || '#',
+    description: jobData.description || existingJob?.description || '',
+    summary: jobData.summary || existingJob?.summary || 'Visa sponsorship opportunity.',
+    visa_sponsorship: jobData.visa_sponsorship ?? existingJob?.visa_sponsorship ?? true,
+    visa_details: jobData.visa_details || existingJob?.visa_details || 'Visa Sponsorship Provided',
+    category: jobData.category || existingJob?.category || 'Software Engineering',
+    job_type: jobData.job_type || existingJob?.job_type || 'Full-time',
+    salary_range: jobData.salary_range || existingJob?.salary_range || null,
+    posted_at: jobData.posted_at || existingJob?.posted_at || new Date().toISOString(),
+    expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
+    is_active: true,
+    click_count: existingJob ? existingJob.click_count : jobData.click_count || 0,
+    created_at: existingJob?.created_at || new Date().toISOString(),
   };
 
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase.from('jobs').upsert(newJob).select().single();
-      if (!error && data) return data as Job;
+      if (!error && data) return { job: data as Job, isDuplicate };
     } catch (e) {
       console.warn('Supabase save error:', e);
     }
   }
 
-  // Memory store fallback
-  const existingIdx = memoryJobs.findIndex(j => j.id === newJob.id);
+  // Memory store update or insert
+  const existingIdx = memoryJobs.findIndex(j => j.id === targetId);
   if (existingIdx >= 0) {
-    memoryJobs[existingIdx] = { ...memoryJobs[existingIdx], ...newJob };
+    memoryJobs[existingIdx] = newJob;
   } else {
     memoryJobs.unshift(newJob);
   }
-  return newJob;
+
+  return { job: newJob, isDuplicate };
 }
 
 export async function deleteJob(id: string): Promise<boolean> {
