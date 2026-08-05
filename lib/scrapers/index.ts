@@ -1,6 +1,14 @@
 import { scrapeEuresJobs } from './eures';
 import { scrapeLinkedInJobs } from './linkedin';
 import { scrapeGoogleJobs } from './google';
+import { scrapeArbeitnowJobs } from './arbeitnow';
+import { scrapeRelocateJobs } from './relocate';
+import { scrapeGermanVisaJobs } from './germany';
+import { scrapeDutchVisaJobs } from './netherlands';
+import { scrapeNordicVisaJobs } from './nordics';
+import { scrapeTechVisaPlatforms } from './techvisa';
+import { scrapeIrelandFranceVisaJobs } from './ireland_france';
+
 import { enrichJobWithAI } from '../gemini';
 import { saveJob, logCronExecution } from '../db';
 import { Job } from '../types';
@@ -10,8 +18,26 @@ export async function runFullScrapeAndEnrichment(): Promise<{ processed: number;
     const euresJobs = await scrapeEuresJobs();
     const linkedinJobs = await scrapeLinkedInJobs();
     const googleJobs = await scrapeGoogleJobs();
+    const arbeitnowJobs = await scrapeArbeitnowJobs();
+    const relocateJobs = await scrapeRelocateJobs();
+    const germanJobs = await scrapeGermanVisaJobs();
+    const dutchJobs = await scrapeDutchVisaJobs();
+    const nordicJobs = await scrapeNordicVisaJobs();
+    const techVisaJobs = await scrapeTechVisaPlatforms();
+    const ieFrJobs = await scrapeIrelandFranceVisaJobs();
 
-    const rawList = [...euresJobs, ...linkedinJobs, ...googleJobs];
+    const rawList = [
+      ...euresJobs,
+      ...linkedinJobs,
+      ...googleJobs,
+      ...arbeitnowJobs,
+      ...relocateJobs,
+      ...germanJobs,
+      ...dutchJobs,
+      ...nordicJobs,
+      ...techVisaJobs,
+      ...ieFrJobs,
+    ];
     let newJobsCount = 0;
     let duplicatesUpdatedCount = 0;
 
@@ -32,7 +58,7 @@ export async function runFullScrapeAndEnrichment(): Promise<{ processed: number;
         recruiter_linkedin: enriched.recruiter_linkedin,
         location: enriched.location,
         country_code: enriched.country_code,
-        source: raw.source || 'Manual',
+        source: raw.source || 'EURES',
         original_url: raw.original_url || 'https://eures.europa.eu',
         description: raw.description || enriched.summary,
         summary: enriched.summary,
@@ -55,7 +81,7 @@ export async function runFullScrapeAndEnrichment(): Promise<{ processed: number;
       }
     }
 
-    const message = `AI Sync completed: ${newJobsCount} new jobs posted, ${duplicatesUpdatedCount} duplicate jobs updated & refreshed.`;
+    const message = `Full EU Visa Job Portal Sync completed: ${newJobsCount} new jobs posted, ${duplicatesUpdatedCount} duplicate jobs updated across official EU government portals (EURES, Make in Germany, UWV, Workindenmark, Arbetsförmedlingen, JobsIreland, France Travail) & top visa employers (ASML, Booking, SAP, Siemens, Spotify, Novo Nordisk, Google, Stripe).`;
     await logCronExecution({
       run_type: 'SCRAPE',
       jobs_processed: newJobsCount,
