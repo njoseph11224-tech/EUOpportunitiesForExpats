@@ -8,18 +8,29 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 export const isSupabaseConfigured = Boolean(
   supabaseUrl &&
   supabaseAnonKey &&
-  !supabaseUrl.includes('your-supabase') &&
-  !supabaseUrl.includes('xyz.supabase.co') // Ensure real credentials before locking to DB
+  !supabaseUrl.includes('your-supabase')
 );
 
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
-// Initial rich seed data of EU Visa Sponsorship Jobs for instant out-of-the-box demo
+// Helper to generate valid 36-character RFC4122 UUIDs for Postgres compatibility
+export function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+// Initial rich seed data of EU Visa Sponsorship Jobs with valid standard UUIDs
 export const INITIAL_JOBS: Job[] = [
   {
-    id: 'job-de-101',
+    id: 'a1b2c3d4-e5f6-4a1b-8c9d-012345678901',
     title: 'Senior Backend Engineer (Go / Distributed Systems)',
     company_name: 'Zalando SE',
     company_website: 'https://corporate.zalando.com/en/jobs',
@@ -45,7 +56,7 @@ export const INITIAL_JOBS: Job[] = [
     created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
   },
   {
-    id: 'job-nl-102',
+    id: 'b2c3d4e5-f6a1-4b2c-9d0e-123456789012',
     title: 'Full Stack React & Node Developer (Relocation & Highly Skilled Migrant Visa)',
     company_name: 'ASML',
     company_website: 'https://www.asml.com/en/careers',
@@ -71,7 +82,7 @@ export const INITIAL_JOBS: Job[] = [
     created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
   },
   {
-    id: 'job-se-103',
+    id: 'c3d4e5f6-a1b2-4c3d-0e1f-234567890123',
     title: 'Senior Staff Data Scientist - AI / ML',
     company_name: 'Spotify',
     company_website: 'https://lifeatspotify.com',
@@ -97,7 +108,7 @@ export const INITIAL_JOBS: Job[] = [
     created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
   },
   {
-    id: 'job-ie-104',
+    id: 'd4e5f6a1-b2c3-4d4e-1f2a-345678901234',
     title: 'Cloud DevOps & Site Reliability Engineer (Critical Skills Employment Permit)',
     company_name: 'Stripe Ireland',
     company_website: 'https://stripe.com/jobs',
@@ -123,7 +134,7 @@ export const INITIAL_JOBS: Job[] = [
     created_at: new Date(Date.now() - 4 * 86400000).toISOString(),
   },
   {
-    id: 'job-de-105',
+    id: 'e5f6a1b2-c3d4-4e5f-2a3b-456789012345',
     title: 'Medical Devices QA Specialist & Regulatory Engineer',
     company_name: 'Siemens Healthineers',
     company_website: 'https://www.siemens-healthineers.com/careers',
@@ -149,7 +160,7 @@ export const INITIAL_JOBS: Job[] = [
     created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
   },
   {
-    id: 'job-fr-106',
+    id: 'f6a1b2c3-d4e5-4f6a-3b4c-567890123456',
     title: 'Lead Product Manager - EU FinTech (Passeport Talent Visa)',
     company_name: 'Qonto',
     company_website: 'https://qonto.com/en/careers',
@@ -175,7 +186,7 @@ export const INITIAL_JOBS: Job[] = [
     created_at: new Date(Date.now() - 6 * 86400000).toISOString(),
   },
   {
-    id: 'job-es-107',
+    id: 'a1b2c3d4-e5f6-4a7b-8c9d-678901234567',
     title: 'Senior Cyber Security Analyst (Spanish Digital Nomad / Tech Visa)',
     company_name: 'Glovo / Delivery Hero',
     company_website: 'https://jobs.glovoapp.com',
@@ -399,7 +410,7 @@ export async function incrementJobClick(jobId: string, referrer?: string, ipHash
 
 export async function saveJob(jobData: Partial<Job>): Promise<Job> {
   const newJob: Job = {
-    id: jobData.id || `job-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    id: jobData.id || generateUUID(),
     title: jobData.title || 'Untitled Position',
     company_name: jobData.company_name || 'Unknown Company',
     company_website: jobData.company_website || null,
