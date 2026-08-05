@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Job } from '@/lib/types';
+import { Job, formatExternalUrl } from '@/lib/types';
 import {
   X,
   Building2,
@@ -40,8 +40,9 @@ export default function JobDetailModal({ job, onClose, onTrackClick }: JobDetail
 
   const handleExternalApply = () => {
     onTrackClick(job.id);
-    if (job.original_url && job.original_url !== '#') {
-      window.open(job.original_url, '_blank');
+    const targetUrl = formatExternalUrl(job.original_url, job.company_name, job.title);
+    if (targetUrl !== '#') {
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -197,9 +198,9 @@ export default function JobDetailModal({ job, onClose, onTrackClick }: JobDetail
             {/* Company Website */}
             {job.company_website && (
               <a
-                href={job.company_website}
+                href={formatExternalUrl(job.company_website, job.company_name)}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="bg-white p-3.5 rounded-xl flex items-center justify-between border border-slate-200 text-blue-700 hover:text-blue-800 transition-colors font-bold shadow-sm"
               >
                 <div className="flex items-center gap-2">
@@ -213,9 +214,9 @@ export default function JobDetailModal({ job, onClose, onTrackClick }: JobDetail
             {/* Recruiter LinkedIn */}
             {job.recruiter_linkedin && (
               <a
-                href={job.recruiter_linkedin}
+                href={formatExternalUrl(job.recruiter_linkedin)}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="bg-white p-3.5 rounded-xl flex items-center justify-between border border-slate-200 text-sky-700 hover:text-sky-800 transition-colors font-bold shadow-sm"
               >
                 <div className="flex items-center gap-2">
