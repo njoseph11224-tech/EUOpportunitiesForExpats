@@ -12,13 +12,21 @@ export async function POST(request: NextRequest) {
 async function handleScrape(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
+    const userAgent = request.headers.get('user-agent') || '';
     const secret = process.env.CRON_SECRET;
 
-    // Optional secret check if set
-    if (secret && authHeader !== `Bearer ${secret}`) {
+    // Secret verification check if CRON_SECRET is configured
+    if (secret) {
       const { searchParams } = new URL(request.url);
-      if (searchParams.get('key') !== secret && process.env.NODE_ENV === 'production') {
-        return NextResponse.json({ error: 'Unauthorized cron request' }, { status: 401 });
+      const isKeyMatch = searchParams.get('key') === secret || searchParams.get('secret') === secret;
+      const isBearerMatch = authHeader === `Bearer ${secret}` || authHeader === secret;
+      const isVercelCron = userAgent.includes('vercel-cron');
+
+      if (!isKeyMatch && !isBearerMatch && !isVercelCron) {
+        return NextResponse.json(
+          { error: 'Unauthorized cron request. Provide Authorization header or ?key=YOUR_CRON_SECRET' },
+          { status: 401 }
+        );
       }
     }
 

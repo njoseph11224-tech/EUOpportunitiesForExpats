@@ -1,27 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cleanupExpiredJobs, logCronExecution } from '@/lib/db';
+import { deactivateExpiredJobs } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
-  return handleCleanup();
+  return handleCleanup(request);
 }
 
 export async function POST(request: NextRequest) {
-  return handleCleanup();
+  return handleCleanup(request);
 }
 
-async function handleCleanup() {
+async function handleCleanup(request: NextRequest) {
   try {
-    const expiredCount = await cleanupExpiredJobs();
-    const message = `Automated cleanup deactivated ${expiredCount} expired job listings past expiration date.`;
+    const authHeader = request.headers.get('authorization');
+    const userAgent = request.headers.get('user-agent') || '';
+    const secret = process.env.CRON_SECRET;
 
-    await logCronExecution({
-      run_type: 'EXPIRE_CLEANUP',
-      jobs_processed: expiredCount,
-      status: 'SUCCESS',
-      message,
+    if (secret) {
+      const { searchParams } = new URL(request.url);
+      const isKeyMatch = searchParams.get('key') === secret || searchParams.get('secret') === secret;
+      const isBearerMatch = authHeader === `Bearer ${secret}` || authHeader === secret;
+      const isVercelCron = userAgent.includes('vercel-cron');
+
+      if (!isKeyMatch && !isBearerMatch && !isVercelCron) {
+        return NextResponse.json(
+          { error: 'Unauthorized cleanup request.' },
+          { status: 401 }
+        );
+      }
+    }
+
+    const deactivatedCount = await deactivateExpiredJobs();
+    return NextResponse.json({
+      success: true,
+      message: `Deactivated ${deactivatedCount} expired job listings`,
+      deactivatedCount,
     });
-
-    return NextResponse.json({ success: true, deactivated_count: expiredCount, message });
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }

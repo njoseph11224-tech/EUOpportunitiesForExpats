@@ -82,10 +82,20 @@ export default function AdminDashboardPage() {
   const handleTriggerSync = async () => {
     setSyncing(true);
     try {
-      const res = await fetch('/api/cron/scrape', { method: 'POST' });
+      const secret = prompt('Enter your CRON_SECRET value set in Vercel (or press OK if not set):', '') || '';
+      const headers: Record<string, string> = {};
+      if (secret) headers['Authorization'] = `Bearer ${secret}`;
+
+      const url = secret ? `/api/cron/scrape?key=${encodeURIComponent(secret)}` : '/api/cron/scrape';
+      const res = await fetch(url, { method: 'POST', headers });
       const data = await res.json();
-      alert(data.message || 'AI Scraper Sync Completed!');
-      fetchAdminData();
+
+      if (!res.ok) {
+        alert('Sync Error (401 Unauthorized): ' + (data.error || 'Please provide your CRON_SECRET'));
+      } else {
+        alert(data.message || `AI Scraper Sync Completed! Added ${data.jobsAdded || 0} jobs.`);
+        fetchAdminData();
+      }
     } catch (e) {
       alert('Sync failed: ' + (e as Error).message);
     } finally {
@@ -97,10 +107,20 @@ export default function AdminDashboardPage() {
     if (!confirm('Deactivate expired job listings past expiration date?')) return;
     setCleaning(true);
     try {
-      const res = await fetch('/api/cron/cleanup', { method: 'POST' });
+      const secret = prompt('Enter your CRON_SECRET value set in Vercel (or press OK if not set):', '') || '';
+      const headers: Record<string, string> = {};
+      if (secret) headers['Authorization'] = `Bearer ${secret}`;
+
+      const url = secret ? `/api/cron/cleanup?key=${encodeURIComponent(secret)}` : '/api/cron/cleanup';
+      const res = await fetch(url, { method: 'POST', headers });
       const data = await res.json();
-      alert(data.message || 'Cleanup completed successfully!');
-      fetchAdminData();
+
+      if (!res.ok) {
+        alert('Cleanup Error: ' + (data.error || 'Please provide your CRON_SECRET'));
+      } else {
+        alert(data.message || 'Cleanup completed successfully!');
+        fetchAdminData();
+      }
     } catch (e) {
       alert('Cleanup failed: ' + (e as Error).message);
     } finally {
