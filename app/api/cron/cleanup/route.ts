@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { deactivateExpiredJobs } from '@/lib/db';
+import { cleanupExpiredJobs } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   return handleCleanup(request);
@@ -29,7 +29,7 @@ async function handleCleanup(request: NextRequest) {
       }
     }
 
-    const deactivatedCount = await deactivateExpiredJobs();
+    const deactivatedCount = await cleanupExpiredJobs();
     return NextResponse.json({
       success: true,
       message: `Deactivated ${deactivatedCount} expired job listings`,

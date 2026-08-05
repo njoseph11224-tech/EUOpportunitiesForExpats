@@ -453,6 +453,8 @@ export async function cleanupExpiredJobs(): Promise<number> {
   return count;
 }
 
+export const deactivateExpiredJobs = cleanupExpiredJobs;
+
 export async function getAdminStats(): Promise<AdminStats> {
   let allJobs = memoryJobs;
 
