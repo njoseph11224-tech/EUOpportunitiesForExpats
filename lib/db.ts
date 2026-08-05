@@ -5,14 +5,19 @@ import { Job, JobFilterParams, JobClickRecord, CronLog, AdminStats } from './typ
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('your-supabase'));
+export const isSupabaseConfigured = Boolean(
+  supabaseUrl &&
+  supabaseAnonKey &&
+  !supabaseUrl.includes('your-supabase') &&
+  !supabaseUrl.includes('xyz.supabase.co') // Ensure real credentials before locking to DB
+);
 
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
-// Initial rich seed data of EU Visa Sponsorship Jobs for instant out-of-the-box local demo
-const INITIAL_JOBS: Job[] = [
+// Initial rich seed data of EU Visa Sponsorship Jobs for instant out-of-the-box demo
+export const INITIAL_JOBS: Job[] = [
   {
     id: 'job-de-101',
     title: 'Senior Backend Engineer (Go / Distributed Systems)',
@@ -197,7 +202,7 @@ const INITIAL_JOBS: Job[] = [
   }
 ];
 
-// Memory store state (used when Supabase credentials aren't active)
+// Memory store state (fallback)
 let memoryJobs: Job[] = [...INITIAL_JOBS];
 let memoryClicks: JobClickRecord[] = [];
 let memoryLogs: CronLog[] = [
@@ -210,6 +215,19 @@ let memoryLogs: CronLog[] = [
     created_at: new Date().toISOString(),
   },
 ];
+
+// Helper function to seed Supabase database automatically if table is empty
+export async function seedInitialJobsToSupabase(): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) return;
+  try {
+    console.log('Seeding initial EU visa jobs into Supabase...');
+    for (const job of INITIAL_JOBS) {
+      await supabase.from('jobs').upsert(job);
+    }
+  } catch (e) {
+    console.warn('Auto-seed Supabase error:', e);
+  }
+}
 
 // Helper to filter memory jobs
 function filterJobsInMemory(params: JobFilterParams): { jobs: Job[]; total: number } {
@@ -311,14 +329,24 @@ export async function getJobs(params: JobFilterParams = {}): Promise<{ jobs: Job
 
       const { data, count, error } = await query.range(from, to);
 
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         return { jobs: data as Job[], total: count || data.length };
+      }
+
+      // If Supabase table exists but has 0 jobs, auto-seed demo jobs into Supabase!
+      if (!error && data && data.length === 0 && (!params.search || params.search === '')) {
+        await seedInitialJobsToSupabase();
+        const refetch = await query.range(from, to);
+        if (refetch.data && refetch.data.length > 0) {
+          return { jobs: refetch.data as Job[], total: refetch.count || refetch.data.length };
+        }
       }
     } catch (e) {
       console.warn('Supabase fetch failed, falling back to memory store:', e);
     }
   }
 
+  // Always return memory jobs if Supabase query returned no results or failed
   return filterJobsInMemory(params);
 }
 
@@ -461,7 +489,7 @@ export async function getAdminStats(): Promise<AdminStats> {
   if (isSupabaseConfigured && supabase) {
     try {
       const { data } = await supabase.from('jobs').select('*');
-      if (data) allJobs = data as Job[];
+      if (data && data.length > 0) allJobs = data as Job[];
     } catch (e) {
       console.warn('Supabase stats error:', e);
     }
@@ -487,7 +515,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     expired_jobs,
     total_clicks,
     visa_sponsored_jobs,
-    recent_clicks_7d: total_clicks, // Simplified for dashboard
+    recent_clicks_7d: total_clicks,
     sources_breakdown,
     country_breakdown,
   };
