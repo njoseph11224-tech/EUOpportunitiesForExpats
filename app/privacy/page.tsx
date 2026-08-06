@@ -72,15 +72,15 @@ export default function PrivacyPage() {
           </p>
 
           <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20 text-xs space-y-3 font-mono">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="text-slate-300">Privacy Officer Contact:</span>
               <span className="text-emerald-300 font-bold">privacy@euvisajobs.eu</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="text-slate-300">Technical Data Lead:</span>
-              <span className="text-emerald-300 font-bold">njoseph11224-tech@github</span>
+              <span className="text-emerald-300 font-bold">nithin.joseph@euvisajobs.eu</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="text-slate-300">Jurisdiction:</span>
               <span className="text-white font-bold">European Union (GDPR / EEA)</span>
             </div>

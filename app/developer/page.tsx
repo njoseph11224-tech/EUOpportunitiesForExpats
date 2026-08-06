@@ -21,7 +21,7 @@ export default function DeveloperPage() {
             Developer & Engineering
           </span>
           <h1 className="text-3xl md:text-5xl font-black text-slate-900 font-heading mt-3 mb-4 tracking-tight">
-            Technical Architecture & Team
+            Technical Architecture & Developer
           </h1>
           <p className="text-base text-slate-600 max-w-2xl mx-auto font-medium leading-relaxed">
             EUVisaJobs.eu is engineered as a modern, high-performance Web Application leveraging Next.js 16 (App Router), Turbopack, Supabase PostgreSQL, and Google Gemini AI.
@@ -35,7 +35,7 @@ export default function DeveloperPage() {
               NJ
             </div>
             <div>
-              <h3 className="text-xl font-black text-slate-900 font-heading">Nithin Joseph & Engineering Team</h3>
+              <h3 className="text-xl font-black text-slate-900 font-heading">Nithin Joseph</h3>
               <p className="text-xs text-slate-500 font-medium mt-0.5">Lead Systems Architect & Full Stack Engineer</p>
               <span className="inline-block mt-2 text-[11px] font-bold bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full border border-blue-200">
                 GitHub: njoseph11224-tech
