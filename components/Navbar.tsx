@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Briefcase, LayoutDashboard } from 'lucide-react';
+import { Briefcase } from 'lucide-react';
 
 export default function Navbar() {
   return (
@@ -33,18 +33,10 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold text-slate-700 hover:text-blue-700 hover:bg-slate-100 transition-colors"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold text-slate-700 hover:text-blue-700 hover:bg-slate-100 transition-colors"
           >
             <Briefcase className="w-4 h-4 text-blue-600" />
-            <span>Jobs</span>
-          </Link>
-
-          <Link
-            href="/admin"
-            className="btn-hague-primary text-xs py-2.5 px-4 rounded-lg flex items-center gap-2"
-          >
-            <LayoutDashboard className="w-4 h-4" />
-            <span>Admin Portal</span>
+            <span>All Visa Jobs</span>
           </Link>
         </div>
       </div>

@@ -247,7 +247,7 @@ export default function AdminDashboardPage() {
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-1 font-medium">
-              Manage postings, track user click metrics, trigger Gemini AI scrapes & batch delete jobs.
+              Manage postings, track user click metrics, trigger AI scrapers & batch delete jobs.
             </p>
           </div>
 
@@ -484,7 +484,7 @@ export default function AdminDashboardPage() {
 
                         <td className="py-3.5 px-4">
                           <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md font-extrabold border border-blue-200">
-                            🔥 {job.click_count || 0}
+                            {job.click_count || 0}
                           </span>
                         </td>
 

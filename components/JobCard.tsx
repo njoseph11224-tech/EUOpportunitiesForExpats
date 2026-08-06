@@ -1,8 +1,10 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Job } from '@/lib/types';
-import { ArrowRight, MapPin, Building2, ShieldCheck, Mail } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 interface JobCardProps {
   job: Job;
@@ -19,6 +21,8 @@ export default function JobCard({
   viewMode = 'grid',
   isFeatured = false,
 }: JobCardProps) {
+  const router = useRouter();
+
   const getCompanyColor = (company: string) => {
     const name = company.toLowerCase();
     if (name.includes('figma')) return { bg: 'bg-black text-white', icon: '🎨' };
@@ -42,10 +46,9 @@ export default function JobCard({
     );
   };
 
-  const handleApplyClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleCardNavigate = () => {
     onTrackClick(job.id);
-    onSelectJob(job);
+    router.push(`/jobs/${job.id}`);
   };
 
   const featured = isFeatured || job.click_count > 50 || job.visa_sponsorship;
@@ -54,7 +57,7 @@ export default function JobCard({
   if (viewMode === 'list') {
     return (
       <div
-        onClick={() => onSelectJob(job)}
+        onClick={handleCardNavigate}
         className={`job-card-exact cursor-pointer group flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3 ${
           featured ? 'ring-2 ring-purple-400/50 shadow-md' : ''
         }`}
@@ -98,10 +101,17 @@ export default function JobCard({
             </div>
           </div>
 
-          <button onClick={handleApplyClick} className="btn-apply-exact">
+          <Link
+            href={`/jobs/${job.id}`}
+            onClick={e => {
+              e.stopPropagation();
+              onTrackClick(job.id);
+            }}
+            className="btn-apply-exact text-decoration-none"
+          >
             <span>Apply</span>
             <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          </Link>
         </div>
       </div>
     );
@@ -110,7 +120,7 @@ export default function JobCard({
   // --- TILED GRID CARD FORMAT ---
   return (
     <div
-      onClick={() => onSelectJob(job)}
+      onClick={handleCardNavigate}
       className={`job-card-exact cursor-pointer group flex flex-col justify-between relative ${
         featured ? 'ring-2 ring-purple-500/60 shadow-lg' : ''
       }`}
@@ -141,7 +151,7 @@ export default function JobCard({
         </div>
       </div>
 
-      {/* Bottom Row: Recruiter Name & Role + Apply Button (Without Recruiter Image) */}
+      {/* Bottom Row: Recruiter Name & Role + Apply Button */}
       <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="text-xs font-bold text-slate-900 truncate">
@@ -152,10 +162,17 @@ export default function JobCard({
           </div>
         </div>
 
-        <button onClick={handleApplyClick} className="btn-apply-exact flex-shrink-0">
+        <Link
+          href={`/jobs/${job.id}`}
+          onClick={e => {
+            e.stopPropagation();
+            onTrackClick(job.id);
+          }}
+          className="btn-apply-exact flex-shrink-0 text-decoration-none"
+        >
           <span>Apply</span>
           <ArrowRight className="w-3.5 h-3.5" />
-        </button>
+        </Link>
       </div>
     </div>
   );
