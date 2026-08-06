@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Briefcase } from 'lucide-react';
+import { Briefcase, Info, Code } from 'lucide-react';
 
 export default function Navbar() {
   return (
@@ -30,13 +30,29 @@ export default function Navbar() {
         </Link>
 
         {/* Navigation Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             href="/"
-            className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold text-slate-700 hover:text-blue-700 hover:bg-slate-100 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:text-blue-700 hover:bg-slate-100 transition-colors"
           >
             <Briefcase className="w-4 h-4 text-blue-600" />
-            <span>All Visa Jobs</span>
+            <span>Jobs</span>
+          </Link>
+
+          <Link
+            href="/about"
+            className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:text-blue-700 hover:bg-slate-100 transition-colors"
+          >
+            <Info className="w-4 h-4 text-slate-500" />
+            <span>About</span>
+          </Link>
+
+          <Link
+            href="/developer"
+            className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:text-purple-700 hover:bg-slate-100 transition-colors"
+          >
+            <Code className="w-4 h-4 text-purple-600" />
+            <span>Developer</span>
           </Link>
         </div>
       </div>
